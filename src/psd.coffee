@@ -1,9 +1,11 @@
+# NodeJS or browser?
 if exports?
   Root = exports
   fs = require 'fs'
 else
   Root = window
 
+# Create our class and add to global scope
 Root.PSD = class PSD
   @DEBUG = true
 
@@ -202,6 +204,23 @@ Root.PSD = class PSD
 
     Log.debug "Image resources overran expected size by #{-n} bytes" if n isnt 0
 
+  parseIrb: ->
+    r = {}
+    r.at = @tell()
+    [r.type, r.id, r.namelen] = @readf ">4s H B"
+    n = @pad2(r.namelen + 1) - 1
+    [r.name] = @readf ">#{n}s"
+    r.name = r.name.substr(0, r.name.length - 1)
+    r.short = r.name.substr(0, 20)
+    [r.size] = @readf ">L"
+    @seek @pad2(r.size)
+    r.rdesc = "[#{RESOURCE_DESCRIPTIONS[r.id]}]"
+    
+    Log.debug "Resource: ", r
+    @resources.push r
+
+    4 + 2 + @pad2(1 + r.namelen) + 4 + @pad2(r.size)
+
   parseLayersMasks: ->
     @parseHeader if not @header
 
@@ -347,15 +366,18 @@ Root.PSD = class PSD
 
           @images.push [0, 0, 0, 0]
           @parseImage linfo[i], true
+
           if linfo[i].channels is 2
             l = @images[i][0]
             a = @images[i][3]
             Log.debug 'LA', l, a
           else
             if typeof @images[i][3] is "number"
-              Log.debug "RGB", @images[i][0...3]
+              # TEST
+              @images[i] = new PSDImage 'RGB', @images[i][0...3]
             else
-              Log.debug "RGBA", @images[i]
+              # TEST
+              @images[i] = new PSDImage 'RGBA', @images[i]
 
       else
         Log.debug "Layer info section is empty"
@@ -390,7 +412,8 @@ Root.PSD = class PSD
     switch li.channels
       when 1 then @mergedImage = @mergedImage[0]
       when 3 then @mergedImage = null # TODO Image.merge
-      else throw "Unsupported number of channels"
+      when 4 then @mergedImage = null
+      else throw "Unsupported number of channels: #{li.channels}"
       
 
 
@@ -452,8 +475,7 @@ Root.PSD = class PSD
 
           channelName = 'L' if li.channels is 2 and channelName is 'B'
 
-          # TODO Image.fromstring
-          p = null
+          p = new PSDImage 'L', cols, rows, data
 
           if isLayer
             @images[li.idx][PIL_BANDS[channelName]] = p
@@ -468,8 +490,7 @@ Root.PSD = class PSD
           channelName = CHANNEL_SUFFIXES[li.chids[idx]]
           channelName = 'L' if li.channels is 2 and channelName is 'B'
 
-          # TODO Image.fromstring
-          p = null
+          p = new PSDImage 'L', cols, rows, data
 
           if isLayer
             @images[li.idx][PIL_BANDS[channelName]] = p
@@ -509,23 +530,6 @@ Root.PSD = class PSD
 
   i16: (c) -> ord(c[1]) + (ord(c[0])<<8)
   i32: (c) -> ord(c[3]) + (ord(c[2])<<8) + (ord(c[1])<<16) + (ord(c[0])<<24)
-
-  parseIrb: ->
-    r = {}
-    r.at = @tell()
-    [r.type, r.id, r.namelen] = @readf ">4s H B"
-    n = @pad2(r.namelen + 1) - 1
-    [r.name] = @readf ">#{n}s"
-    r.name = r.name.substr(0, r.name.length - 1)
-    r.short = r.name.substr(0, 20)
-    [r.size] = @readf ">L"
-    @seek @pad2(r.size)
-    r.rdesc = "[#{RESOURCE_DESCRIPTIONS[r.id]}]"
-    
-    Log.debug "Resource: ", r
-    @resources.push r
-
-    4 + 2 + @pad2(1 + r.namelen) + 4 + @pad2(r.size)
 
     
   pad2: (i) -> Math.floor((i + 1) / 2) * 2
