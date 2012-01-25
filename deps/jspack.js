@@ -249,8 +249,4 @@ function JSPack()
   };
 };
 
-if (typeof exports == "undefined") {
-  window.jspack = new JSPack();
-} else {
-  var jspack = new JSPack(); 
-}
+var jspack = new JSPack(); 
