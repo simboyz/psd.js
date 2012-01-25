@@ -10,4 +10,5 @@ This implementation is more or less a direct port of the Python [psdparse](https
 
 Whats done?
 
-* Can parse header information
+* Read header information
+* Find and read all image resources
