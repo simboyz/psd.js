@@ -148,7 +148,7 @@ Root.PSD = class PSD
   constructor: (@data) ->
     @pos = 0
     @header = {}
-    @resources = null
+    @resources = []
     @numLayers = 0
     @layers = null
     @images = null
@@ -158,7 +158,7 @@ Root.PSD = class PSD
     Log.debug "Beginning parsing"
 
     @parseHeader()
-    #@parseImageResources()
+    @parseImageResources()
     #@parseLayersMasks()
     #@parseImageData()
 
@@ -166,11 +166,9 @@ Root.PSD = class PSD
     Log.debug "Parsing finished"
 
   parseHeader: ->
-    Log.debug "### Header ###"
+    Log.debug "\n### Header ###"
 
     data = @readf ">4sH 6B HLLHH"
-
-    Log.debug data
 
     @header[section] = data.shift() for section in HEADER_SECTIONS
     @size = [@header['rows'], @header['cols']]
@@ -186,18 +184,28 @@ Root.PSD = class PSD
     else
       @header['modename'] = "(#{@header['mode']})"
 
-    Log.debug """
-      channels: #{@header['channels']}, rows: #{@header['rows']}, cols: #{@header['cols']},
-      depth: #{@header['depth']}, mode: #{@header['mode']} [#{@header['modename']}]
-    """
+    Log.debug @header
 
     @header['colormodepos'] = @pos
     @skipBlock("color mode data")
 
+  parseImageResources: ->
+    Log.debug "\n### Resources ###"
+
+    [n] = @readf ">L"
+    while n > 0
+      n -= @parseIrb()
+
+    Log.debug "Image resources overran expected size by #{-n} bytes" if n isnt 0
+
   ###
   Utility functions
   ###
+  tell: -> @pos
   read: (bytes) -> (@data[@pos++] for i in [0...bytes])
+  seek: (amount, rel = true) ->
+    if rel then @pos += amount else @pos = amount
+
   readUInt32: ->
     b1 = @data[@pos++] << 24
     b2 = @data[@pos++] << 16
@@ -209,14 +217,32 @@ Root.PSD = class PSD
     b1 = @data[@pos++] << 8
     b2 = @data[@pos++]
     b1 | b2
+
+  parseIrb: ->
+    r = {}
+    r.at = @tell()
+    [r.type, r.id, r.namelen] = @readf ">4s H B"
+    n = @pad2(r.namelen + 1) - 1
+    [r.name] = @readf ">#{n}s"
+    r.name = r.name.substr(0, r.name.length - 1)
+    r.short = r.name.substr(0, 20)
+    [r.size] = @readf ">L"
+    @seek @pad2(r.size)
+    r.rdesc = "[#{RESOURCE_DESCRIPTIONS[r.id]}]"
+    
+    Log.debug "Resource: ", r
+    @resources.push r
+
+    4 + 2 + @pad2(1 + r.namelen) + 4 + @pad2(r.size)
+
     
   pad2: (i) -> (i + 1) / 2 * 2
   pad4: (i) -> (i + 3) / 4 * 4
   readf: (format) -> jspack.Unpack format, @read(jspack.CalcLength(format))
 
   skipBlock: (desc) ->
-    n = @readf('>L')
-    @pos += n if n # relative
+    [n] = @readf('>L')
+    @seek(n) if n # relative
 
     Log.debug "Skipped #{desc} with #{n} bytes"
   
