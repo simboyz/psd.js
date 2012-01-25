@@ -12,3 +12,4 @@ Whats done?
 
 * Read header information
 * Find and read all image resources
+* Read and parse all image layers
