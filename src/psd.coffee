@@ -236,8 +236,8 @@ Root.PSD = class PSD
     4 + 2 + @pad2(1 + r.namelen) + 4 + @pad2(r.size)
 
     
-  pad2: (i) -> (i + 1) / 2 * 2
-  pad4: (i) -> (i + 3) / 4 * 4
+  pad2: (i) -> Math.floor((i + 1) / 2) * 2
+  pad4: (i) -> Math.floor((i + 3) / 4) * 4
   readf: (format) -> jspack.Unpack format, @read(jspack.CalcLength(format))
 
   skipBlock: (desc) ->
