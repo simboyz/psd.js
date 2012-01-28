@@ -34,7 +34,6 @@ class PSDHeader
     15: 'Duotone16'
 
   constructor: (@file) ->
-    @data = null
 
   parse: ->
     data = @file.readf ">4sH 6B HLLHH"

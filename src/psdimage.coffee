@@ -15,8 +15,9 @@ class PSDImage
       @pixelData.push 255
 
   parseRGB: (alpha = false) ->
-    for i in [0...@data.length] by 4
-      @pixelData[i] = @data[i]
-      @pixelData[i+1] = @data[i+1]
-      @pixelData[i+2] = @data[i+2]
-      @pixelData[i+3] = if alpha then @data[i+3] else 255
+    for i in [0...(@width*@height)]
+      @pixelData.push @data.r[i]
+      @pixelData.push @data.g[i]
+      @pixelData.push @data.b[i]
+      @pixelData.push if alpha then @data.a[i] else 255
+        

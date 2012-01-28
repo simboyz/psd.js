@@ -22,10 +22,10 @@ class PSDFile
     b2 = @data[@pos++]
     b1 | b2
 
-  readInt: -> @file.read 4
-  readShortInt: -> @file.read 2
-  readDouble: -> @file.read 8
-  readBoolean: -> @file.read(1) isnt 0
+  readInt: -> @readf(">i")[0]
+  readShortInt: -> @readf(">h")[0]
+  readDouble: -> @readf(">d")[0]
+  readBoolean: -> @read(1)[0] isnt 0
   readUnicodeString: ->
     str = ""
     strlen = @readInt()
@@ -112,6 +112,12 @@ class PSDFile
         @seek length
 
     {type: osType, value: value}
+
+  readBytesList: (size) ->
+    bytesRead = @read size
+    result = []
+    result.push ord(b) for b in bytesRead
+    result
   
   readf: (format) -> jspack.Unpack format, @read(jspack.CalcLength(format))
 

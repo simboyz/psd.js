@@ -59,14 +59,14 @@ class PSDResource
 
     [@type, @id, @namelen] = @file.readf ">4s H B"
 
-    n = @pad2(@namelen + 1) - 1
+    n = Util.pad2(@namelen + 1) - 1
     [@name] = @file.readf ">#{n}s"
     @name = @name.substr(0, @name.length - 1)
     @short = @name.substr(0, 20)
 
     [@size] = @file.readf ">L"
     @file.seek Util.pad2(@size)
-    
+
     @rdesc = "[#{RESOURCE_DESCRIPTIONS[@id]}]"
 
     4 + 2 + Util.pad2(1 + @namelen) + 4 + Util.pad2(@size)

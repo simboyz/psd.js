@@ -25,6 +25,7 @@ coffeeFiles   = [
   "psdheader"
   "psdimage"
   "psdlayer"
+  "psdlayermask"
   "psdresource"
   "util"
   "log"

@@ -20,6 +20,12 @@ class PSDLayer
     2: "closed folder"
     3: "bounding section divider"
 
+  COMPRESSIONS =
+    0: 'Raw'
+    1: 'RLE'
+    2: 'ZIP'
+    3: 'ZIPPrediction'
+
   BLEND_MODES =
     "norm": "normal"
     "dark": "darken"
@@ -56,11 +62,14 @@ class PSDLayer
     "Tahoma"
   ]
 
-  constructor: (@file) ->
+  constructor: (@file, @baseLayer = false, @header = null) ->
     @images = []
+    @mask = {}
 
-  parse: ->
-    @parseInfo()
+  parse: (layerIndex = null) ->
+    return @parseBaseLayer() if @baseLayer
+
+    @parseInfo(layerIndex)
     @parseBlendModes()
 
     # remember position for skipping unrecognized data
@@ -95,13 +104,36 @@ class PSDLayer
         # Type tool
         when "TySh" then @readTypeTool()
 
-    @parseLayerName()
-
     # Skip extra data
     @file.seek extrastart + extralen, false
 
-  parseInfo: ->
-    @idx = i
+  parseBaseLayer: ->
+    height = @header.height
+    width = @header.width
+    @top = 0
+    @left = 0
+    @bottom = height
+    @right = width
+    @width = width
+    @height = height
+
+    channels = @header.channels
+    chanDelta = 3 - channels
+    @channelsInfo = []
+    @channelsInfo.push([i, 0]) for i in [chanDelta...channels+chanDelta]
+
+    @blendMode =
+      code: "norm"
+      label: "normal"
+
+    @opacity = 255
+    @visible = true
+    @name = "Canvas"
+    @layerId = 0
+
+
+  parseInfo: (layerIndex) ->
+    @idx = layerIndex
 
     ###
     Layer Info
@@ -109,38 +141,22 @@ class PSDLayer
     [@top, @left, @bottom, @right, @channels] = @file.readf ">LLLLH"
     [@rows, @cols] = [@bottom - @top, @right - @left]
 
-    Log.debug "Layer #{@idx}:", l
+    Log.debug "Layer #{@idx}:", @
 
     # Sanity check
     if @bottom < @top or @right < @left or @channels > 64
       Log.debug "Somethings not right, attempting to skip layer."
       @file.seek 6 * @channels + 12
       @file.skipBlock "layer info: extra data"
-      continue # next layer
+      return # next layer
 
     # Read channel info
-    @chlengths = []
-    @chids = []
+    @channelsInfo = []
+    for i in [0...@channels]
+      [channelID, channelLength] = @file.readf ">hL"
+      Log.debug "Channel #{i}: id=#{channelID}, #{channelLength} bytes, type=#{CHANNEL_SUFFIXES[channelID]}"
 
-    # HACK HACK HACK
-    @chindex = []
-    for x in [0...@channels + 2]
-      @chindex.push(x * -1)
-
-    for j in [0...@channels]
-      [chid, chlen] = @file.readf ">hL"
-      @chids.push chid
-      @chlengths.push chlen
-      
-      Log.debug "Channel #{j}: id=#{chid}, #{chlen} bytes"
-
-      if -2 <= chid < @channels
-        # This may be Python only, just a heads up.
-        @chindex[chid] = j
-      else
-        Log.debug "Unexpected channel id #{chid}"
-
-      @chidstr = CHANNEL_SUFFIXES[chid]
+      @channelsInfo.push [channelID, channelLength]
 
   parseBlendModes: ->
     @blendMode = {}
@@ -156,7 +172,7 @@ class PSDLayer
 
     @blendMode.key = @blendMode.key.trim()
     @blendMode.opacp = (@blendMode.opacity * 100 + 127) / 255
-    @blendMode.blending = BLEND_MDOES[@blendMode.key]
+    @blendMode.blending = BLEND_MODES[@blendMode.key]
 
     Log.debug "Blending mode:", @blendMode
 
@@ -264,3 +280,109 @@ class PSDLayer
 
     font
 
+  getImageData: (readPlaneInfo = true, lineLengths = []) ->
+    @channels =
+      a: []
+      r: []
+      g: []
+      b: []
+
+    opacityDivider = @opacity / 255
+
+    for own i, channelTuple of @channelsInfo
+      [channelId, length] = channelTuple
+      if channelId < -1
+        width = @mask.cols
+        height = @mask.rows
+      else
+        width = @cols
+        height = @rows
+
+      channel = @readColorPlane readPlaneInfo, lineLengths, i, height, width
+      switch channelId
+        when -1
+          @channels.a = []
+          @channels.a.push (ch * opacityDivider) for ch in channel
+        when 0 then @channels.r = channel
+        when 1 then @channels.g = channel
+        when 2 then @channels.b = channel
+        else
+          result = []
+          for i in [0...channel.length]
+            result.push @channels.a[i] * (channel[i]/255)
+
+          @channels.a = result
+
+    @makeImage()
+
+  readColorPlane: (readPlaneInfo, lineLengths, planeNum, height, width) ->
+    size = width * height
+    imageData = []
+    rleEncoded = false
+
+    if readPlaneInfo
+      compression = @file.readShortInt()
+      Log.debug "Compression: id=#{compression}, name=#{COMPRESSIONS[compression]}"
+
+      rleEncoded = compression is 1
+      if rleEncoded
+        if not lineLengths
+          lineLengths = []
+          lineLengths.push @file.readShortInt() for a in [0...height]
+      else
+        Log.debug "ERROR: compression not implemented yet. Skipping."
+
+      planeNum = 0
+    else
+      rleEncoded = lineLengths.length isnt 0
+
+    if rleEncoded
+      imageData = @readPlaneCompressed lineLengths, planeNum, height, width
+    else
+      imageData = @file.readBytesList(size)
+
+    imageData
+
+  readPlaneCompressed: (lineLengths, planeNum, height, width) ->
+    b = []
+    b.push 0 for x in [0...(width*height)]
+    s = []
+    pos = 0
+    lineIndex = planeNum * height
+
+    for i in [0...height]
+      len = lineLengths[lineIndex]
+      lineIndex++
+      s = @file.readBytesList(len)
+      @decodeRLE s, 0, len, b, pos
+      pos += width
+
+    b
+
+  decodeRLE: (src, sindex, slen, dst, dindex) ->
+    max = sindex + slen
+
+    while sindex < max
+      b = src[sindex]
+      sindex++
+      n = b
+      if b > 127
+        n = 255 - n + 2
+        b = src[sindex]
+        sindex++
+        for i in [0...n]
+          dst[dindex] = b
+          dindex++
+      else
+        n++
+        dst[dindex...dindex+n] = src[sindex...sindex+n]
+        dindex += n
+        sindex += n
+
+  makeImage: ->
+    return if not @cols? or not @rows?
+
+    type = if isNaN(@channels.a[0]) then "RGB" else "RGBA"
+    @image = new PSDImage(type, @cols, @rows, @channels)
+    
+    Log.debug "Image: type=#{type}, width=#{@cols}, height=#{@rows}"
