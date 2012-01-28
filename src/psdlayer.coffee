@@ -163,7 +163,7 @@ class PSDLayer
   parseMaskData: ->
     [@mask.size] = @file.readf ">L"
     if @mask.size
-      [@mask.top, @mask.left, @mask.bottom, @mask.right, @mask.default_color, @mask.flags] = @file.readf ">LLLLBB"
+      [@mask.top, @mask.left, @mask.bottom, @mask.right, @mask.defaultColor, @mask.flags] = @file.readf ">LLLLBB"
 
       # skip remainder
       @file.seek @mask.size - 18

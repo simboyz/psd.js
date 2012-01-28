@@ -48,10 +48,10 @@ class PSDFile
     descriptors
 
   readString: (length) -> @readf ">#{length}s"
-  readLengthWithString: (default = 4) ->
+  readLengthWithString: (defaultLen = 4) ->
     length = @readInt()
     if length is 0
-      [str] = @readf ">#{default}s"
+      [str] = @readf ">#{defaultLen}s"
     else
       [str] = @readf ">#{length}s"
 
@@ -71,7 +71,7 @@ class PSDFile
         value = []
         value.push(@readOsType()) for i in [0...listSize]
       when "doub" then value = @readDouble()
-      when "UntF" then
+      when "UntF"
         value =
           type: @readString(4)
           value: @readDouble()
