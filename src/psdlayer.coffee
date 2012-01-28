@@ -383,6 +383,8 @@ class PSDLayer
     return if not @cols? or not @rows?
 
     type = if isNaN(@channels.a[0]) then "RGB" else "RGBA"
-    @image = new PSDImage(type, @cols, @rows, @channels)
+    image = new PSDImage(type, @cols, @rows, @channels)
     
     Log.debug "Image: type=#{type}, width=#{@cols}, height=#{@rows}"
+
+    @images.push image
