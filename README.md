@@ -2,7 +2,7 @@
 
 A Photoshop file format (PSD) parser written in Coffeescript/Javascript for both browsers and NodeJS implementations.
 
-This implementation is more or less a direct port of the Python [psdparse](https://github.com/jerem/psdparse) library, with a little help from [png.js](https://github.com/devongovett/png.js).
+This implementation is more or less a direct port of [pypsd](http://code.google.com/p/pypsd) with some help from [psdparse](https://github.com/jerem/psdparse).
 
 ## Current Status
 
@@ -13,3 +13,4 @@ Whats done?
 * Read header information
 * Find and read all image resources
 * Read and parse all image layers
+* Read image data into HTML canvas friendly format
