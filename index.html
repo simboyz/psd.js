@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>psd.js - A Photoshop PSD file parser in Javascript</title>
+
+  <link type="text/css" rel="stylesheet" href="css/bootstrap.min.css" />
+  <link type="text/css" rel="stylesheet" href="css/main.css" />
+
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+  <link type="text/css" rel="stylesheet" href="prettify/prettify.css" />
+  <script type="text/javascript" src="prettify/prettify.js"></script>
+
+  <script type="text/javascript" src="https://raw.github.com/meltingice/psd.js/master/lib/psd.js"></script>
+  <script type="text/javascript" src="js/demo.js"></script>
+</head>
+<body onload="prettyPrint()">
+  <div class="container">
+    <header class="page-header">
+      <h1>psd.js</h1>
+      <p class="lead">A Photoshop PSD file parser in Javascript for browsers and NodeJS</p>
+    </header>
+
+    <section id="about" class="row">
+      <div class="span6">
+        <h2>About</h2>
+        <p>psd.js is a general purpose file parser for PSD files created in Photoshop. Given a PSD file, it can parse out information such as image size and color modes, image resources, layer info, image contents, etc.</p>
+        <p>The psd.js source files are written in <a href="http://coffeescript.org">Coffeescript</a>.</p>
+      </div>
+      <div class="span6">
+        <h2>Goals</h2>
+        <p>psd.js is far from finished, but it also has a great start. Some goals of the project are:</p>
+
+        <ul>
+          <li>Output flattened image to PNG</li>
+          <li>Output image to HTML canvas</li>
+          <li>Selectively enable/disable layers for export</li>
+          <li>Extract image contents of single layers</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="example" class="row">
+      <div class="span12">
+        <h2>Example Usage</h2>
+        <p>An extremely simple example of how psd.js can be used to access PSD layer information.</p>
+        
+        <pre class="prettyprint linenums">
+{PSD} = require 'psd.js'
+
+psd = PSD.fromFile './path/to/file.psd'
+psd.parse()
+
+for layer in psd.layerMask.layers
+  console.log "Layer: #{layer.name}"
+  console.log "Size: width=#{layer.cols}, height=#{layer.rows}"
+  console.log "Position: top=#{layer.top}, left=#{layer.left}"
+        </pre>
+      </div>
+    </section>
+
+    <section id="demo" class="row">
+      <div class="span12">
+        <h2>Demo</h2>
+        <p>Drag &amp; drop a PSD file from your computer into the box below. It will be parsed, and some information about it will be displayed to the right</p>
+        <p>Note that this requires a browser that supports the HTML5 drag &amp; drop API.</p>
+      </div>
+
+      <div class="span4">
+        <div id="psd-drop">
+          <h2>Drop PSD here</h2>
+        </div>
+      </div>
+      <div class="span8">
+        <h3>PSD Parser Output</h3>
+        <div id="psd-output">
+          <div class="alert alert-info">Waiting for a file to analyze...</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
