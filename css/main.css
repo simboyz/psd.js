@@ -1,3 +1,8 @@
+.page-header h1 {
+  font-size: 54px;
+  margin-bottom: 5px;
+}
+
 #psd-drop {
   background-color: #F7F7F9;
   -webkit-border-radius: 4px;
@@ -10,4 +15,8 @@
 #psd-drop h2 {
   line-height: 200px;
   text-align: center;
+}
+
+#demo .span12 {
+  padding-bottom: 20px
 }
